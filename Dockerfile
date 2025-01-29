@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-# docker build -t 
+# docker build -t mytz -t ghcr.io/cilliemalan/mytz .
 
 # Comments are provided throughout this file to help you get started.
 # If you need more help, visit the Dockerfile reference guide at
