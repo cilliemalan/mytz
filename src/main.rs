@@ -4,6 +4,7 @@ mod tz;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
+extern crate lru;
 extern crate serde_json;
 
 use axum::{http::HeaderMap, routing::get, Router};

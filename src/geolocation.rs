@@ -1,5 +1,12 @@
 use crate::tz::lookup_tz_posix_string;
 
+use lru::LruCache;
+use once_cell::sync::Lazy;
+use std::num::NonZeroUsize;
+use std::sync::Mutex;
+
+static GEO_CACHE: Lazy<Mutex<LruCache<String, String>>> =
+    Lazy::new(|| Mutex::new(LruCache::new(NonZeroUsize::new(100 * 1024).unwrap())));
 
 #[derive(Serialize, Deserialize)]
 pub struct TimezoneResult {
@@ -46,10 +53,22 @@ pub struct Geo {
 
 static API_URL: &str = "https://api.ipgeolocation.io/timezone";
 
-pub async fn geolocate(api_key: String, ip_address: String) -> reqwest::Result<TimezoneResult> {
+pub async fn geolocate(api_key: String, ip_address: String) -> reqwest::Result<String> {
+    let cached = GEO_CACHE
+        .lock()
+        .ok()
+        .map(|mut cache| {
+            cache.get(ip_address.as_str()).map(|s| s.clone())
+        })
+        .flatten();
+
+    if let Some(cached_value) = cached {
+        return Ok(cached_value);
+    }
+    
     let client = reqwest::Client::new();
-    let ip_address = urlencoding::encode(&ip_address);
-    let request_url = format!("{}?apiKey={}&ip={}", API_URL, api_key, ip_address);
+    let ip_addressu8 = urlencoding::encode(&ip_address);
+    let request_url = format!("{}?apiKey={}&ip={}", API_URL, api_key, ip_addressu8);
 
     let response = client
         .get(&request_url)
@@ -58,21 +77,22 @@ pub async fn geolocate(api_key: String, ip_address: String) -> reqwest::Result<T
         .json::<TimezoneResult>()
         .await?;
 
-    Ok(response)
+    GEO_CACHE.lock()
+        .map(|mut cache| {
+            cache.put(ip_address,response.timezone.clone());
+        }).ok();
+
+    Ok(response.timezone)
 }
 
 pub async fn geolocate_timezone(api_key: String, ip_address: String) -> Option<String> {
-    match geolocate(api_key, ip_address).await {
-        Ok(r) => Some(r.timezone),
-        _ => None,
-    }
+    geolocate(api_key, ip_address).await.ok()
 }
 
 pub async fn geolocate_tz(api_key: String, ip_address: String) -> Option<&'static str> {
     geolocate(api_key, ip_address)
         .await
         .ok()
-        .map(|r| r.timezone)
         .map(|r| lookup_tz_posix_string(r.as_str()))
         .flatten()
 }
