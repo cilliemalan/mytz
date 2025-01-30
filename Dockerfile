@@ -45,7 +45,7 @@ RUN --mount=type=bind,source=src,target=src,rw \
     --mount=type=cache,target=/usr/local/cargo/registry/ \
 python3 gentz.py && \
 cargo build --locked --release --target=$(uname -m)-unknown-linux-musl && \
-cp ./target/x86_64-unknown-linux-musl/release/$APP_NAME /bin/server
+cp ./target/$(uname -m)-unknown-linux-musl/release/$APP_NAME /bin/server
 
 ################################################################################
 # Create a new stage for running the application that contains the minimal
