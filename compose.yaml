@@ -1,6 +1,6 @@
 services:
   server:
-    image: ghcr.io/cilliemalan/mytz:latest
+    image: mytz
     restart: unless-stopped
     ports:
       - 3200:3200
